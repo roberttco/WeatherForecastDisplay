@@ -1,5 +1,4 @@
-// You need to include this in main.cpp
-const String OPEN_WEATHER_MAP_APP_ID = "5d193c894ed9999f5bae90b88f511523";
-const float OPEN_WEATHER_MAP_LOCATTION_LAT = 40.4865477;
-const float OPEN_WEATHER_MAP_LOCATTION_LON = -105.0804652;
-const String OPEN_WEATHER_MAP_LOCATION_ID = "5577147";
+// You need to include thisconst String OPEN_WEATHER_MAP_APP_ID = "OWM api key";
+const float OPEN_WEATHER_MAP_LOCATTION_LAT = <your latitude>;
+const float OPEN_WEATHER_MAP_LOCATTION_LON = <your longitude>;
+const String OPEN_WEATHER_MAP_LOCATION_ID = "<your city ID>";
