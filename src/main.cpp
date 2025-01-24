@@ -126,7 +126,7 @@ void loop()
 #ifdef VCAL
     int a = analogRead(A0);
     int a_wo = a - 7;         // imperically derived by connecting A0 to GND
-    double K = 3.273 / 615.0; // calibrtion factor also derived imperically by observing a_wo while measuring input voltage
+    double K = 3.273 / 615.0; // calibration factor also derived imperically by observing a_wo while measuring input voltage
 
     float voltage_val = a_wo * K;
 
@@ -213,19 +213,14 @@ void loop()
     APPDEBUG_PRINT("Home assistant temperature: ");
     APPDEBUG_PRINTLN(temp_now);
 
-    // displayCurrentWeatherData(&openWeatherMapOneCallData.current);
-
     // calculate the battery level using calibration data
-    int a_wo = rtcData->adc - 7; // imperially derived by connecting A0 to GND
+    int a_wo = rtcData->adc - 7; // derived by connecting A0 to GND
     double K = 3.273 / 615.0;    // calib
     battery_level = a_wo * K;
 
     displayInformation(&openWeatherMapOneCallData, temp_now, battery_level);
 
-    delay(5000);
-
-    updateCurrentTemperature(55);
-
-    delay(300 * 60000); // 5 minutes
+    APPDEBUG_PRINTLN("Going to sleep now ...");
+    ESP.deepSleep(DEEP_SLEEP_TIME_SECONDS * 1000000);
 #endif
 }

@@ -15,6 +15,6 @@
 #define APPDEBUG_PRINTLN(x)
 #endif
 
-#define DEEP_SLEEP_TIME_SECONDS 30
+#define DEEP_SLEEP_TIME_SECONDS 300
 
 #endif
