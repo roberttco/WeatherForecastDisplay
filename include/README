@@ -4,8 +4,8 @@ Create the file secret.h in the include folder with these contents.  Replace the
 
 ----- 8< cut here -----
 // You need to include thisconst String OPEN_WEATHER_MAP_APP_ID = "OWM api key";
-const float OPEN_WEATHER_MAP_LOCATTION_LAT = <your latitude>;
-const float OPEN_WEATHER_MAP_LOCATTION_LON = <your longitude>;
+const float OPEN_WEATHER_MAP_LOCATION_LAT = <your latitude>;
+const float OPEN_WEATHER_MAP_LOCATION_LON = <your longitude>;
 const String OPEN_WEATHER_MAP_LOCATION_ID = "<your city ID>";
 const char * HOME_ASSISTANT_AUTH = "Bearer HA long lived token>"; // must beign with 'Bearer ' - note the space
 const char * HOME_ASSISTANT_URL = "URL to HA sensor"; // Like http://ha.local:8123/api/states/sensor.outdoor_temperatue"

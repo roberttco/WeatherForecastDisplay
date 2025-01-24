@@ -191,7 +191,7 @@ void loop()
         {
             oneCallClient->setMetric(IS_METRIC);
             oneCallClient->setLanguage(OPEN_WEATHER_MAP_LANGUAGE);
-            oneCallClient->update(&openWeatherMapOneCallData, OPEN_WEATHER_MAP_APP_ID, OPEN_WEATHER_MAP_LOCATTION_LAT, OPEN_WEATHER_MAP_LOCATTION_LON);
+            oneCallClient->update(&openWeatherMapOneCallData, OPEN_WEATHER_MAP_APP_ID, OPEN_WEATHER_MAP_LOCATION_LAT, OPEN_WEATHER_MAP_LOCATION_LON);
         }
 
         // battery level
