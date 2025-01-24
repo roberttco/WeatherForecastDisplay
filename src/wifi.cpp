@@ -4,6 +4,8 @@
 #include "wifi.h"
 #include "rtcdata.h"
 
+#include "secret.h"
+
 // IPAddress ip    (192,168,2,182);
 // IPAddress dns   (192,168,2,4);
 // IPAddress gw    (192,168,2,1);
@@ -18,8 +20,8 @@ const char *ESP_HOST_NAME = "esp-" + ESP.getFlashChipId();
 const char *ESP_HOST_NAME = "esp-" + ESP.getEfuseMac();
 #endif
 
-const char *password = "UbKNUJakLBLpOh";
-const char *ssid = "qsvMIMt8Fm6NV3";
+const char *password = WIFI_PASSWORD;
+const char *ssid = WIFI_SSID;
 
 #ifdef APPDEBUG
 
@@ -65,6 +67,8 @@ boolean ConnectToWiFi(RtcData *rtcData)
     boolean rval = false;
     int retries = 0;
 
+    pinMode(0, INPUT);
+
     // the value will be zero if the data isn't valid
     boolean apvalid = ((rtcData != NULL) && ((rtcData->valid & APVALID) == APVALID));
 
@@ -79,13 +83,13 @@ boolean ConnectToWiFi(RtcData *rtcData)
         APPDEBUG_PRINT("MAC: ");
         APPDEBUG_PRINTLN(macAddressToString(rtcData->ap_mac));
 
-        WiFi.begin(ssid, password, rtcData->channel, rtcData->ap_mac, true);
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD, rtcData->channel, rtcData->ap_mac, true);
     }
     else
     {
         // The RTC data was not valid, so make a regular connection
         APPDEBUG_PRINTLN("Connecting to AP by discovering AP channel and MAC");
-        WiFi.begin(ssid, password);
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     }
     delay(50);
 
@@ -94,7 +98,19 @@ boolean ConnectToWiFi(RtcData *rtcData)
     while (wifiStatus != WL_CONNECTED)
     {
         retries++;
-        if (retries == 300)
+        if (digitalRead(0) == LOW && retries > 10)
+        {
+            APPDEBUG_PRINTLN("WiFi reset button pressed, resetting WiFi to use hard coded SSID and password.");
+            WiFi.disconnect();
+            delay(10);
+            WiFi.forceSleepBegin();
+            delay(10);
+            WiFi.forceSleepWake();
+            delay(10);
+            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+            retries = 0;    // reset retries here so as long as the reset pin is held down, we will keep trying to connect
+        }
+        else if (retries == 300)
         {
             APPDEBUG_PRINTLN("No connection after 300 steps, power cycling the WiFi radio. I have seen this work when the connection is unstable");
             WiFi.disconnect();
@@ -103,10 +119,9 @@ boolean ConnectToWiFi(RtcData *rtcData)
             delay(10);
             WiFi.forceSleepWake();
             delay(10);
-            WiFi.begin(ssid, ssid);
+            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
         }
-
-        if (retries == 600)
+        else if (retries == 600)
         {
             APPDEBUG_PRINTLN("Retrying WiFi connection");
 
@@ -141,7 +156,7 @@ boolean ConnectToWiFi(RtcData *rtcData)
         rval = true;
 
         APPDEBUG_PRINT("Connected to ");
-        APPDEBUG_PRINTLN(ssid);
+        APPDEBUG_PRINTLN(WiFi.SSID());
         APPDEBUG_PRINT("Assigned IP address: ");
         APPDEBUG_PRINTLN(WiFi.localIP());
     }

@@ -13,7 +13,8 @@
         "ratio": "cpp",
         "streambuf": "cpp",
         "tuple": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "type_traits": "cpp"
     },
     "search.useIgnoreFiles": false
 }

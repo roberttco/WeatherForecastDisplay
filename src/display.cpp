@@ -32,19 +32,17 @@ void initDisplay()
 
 struct Zone
 {
-    int16_t x, y, w, h, cx, cy;
+    int16_t x, y, w, h;
 } zones[numzones] = {
-    {0, 0, 98, 70, 49, 35},
-    {98, 0, 98, 70, 147, 35},
-    {196, 0, 98, 70, 245, 35},
-
-    {0, 70, 98, 35, 49, 87},
-    {98, 70, 98, 35, 147, 87},
-    {196, 70, 98, 35, 245, 87},
-
-    {0, 105, 98, 22, 49, 116},
-    {98, 105, 98, 22, 147, 116},
-    {196, 105, 98, 22, 245, 116},
+    {0, 0, 98, 70},     // current temp
+    {98, 0, 98, 70},    // high temp
+    {196, 0, 98, 70},   // icon
+    {0, 70, 98, 35},    // current label
+    {98, 70, 98, 35},   // high temp label
+    {196, 70, 98, 35},  // icon label
+    {0, 105, 98, 22},   // sample time
+    {98, 105, 98, 22},  // warning
+    {196, 105, 98, 22}, // battery level
 };
 
 #define CURRENT_TEMP_ZONE 0
@@ -63,24 +61,24 @@ void GetAlignedStringCoordinatesInZone(String str, int zone, byte alignment = AL
     int16_t zone_y = zones[zone].y;
     int16_t zone_w = zones[zone].w;
     int16_t zone_h = zones[zone].h;
-    int16_t zone_cx = zones[zone].cx;
-    int16_t zone_cy = zones[zone].cy;
+
+#ifdef APPDEBUG
+    Serial.printf("Zone: %i, align=%2i, x=%3i, y=%3i, w=%3i, h=%3i, ", zone, alignment, zone_x, zone_y, zone_w, zone_h);
+#endif
 
     int16_t tbx, tby;
     uint16_t tbw, tbh;
+
+    int16_t x = 0, y = 0;
 
     const char *c_str = str.c_str();
 
     display.getTextBounds(c_str, 0, 0, &tbx, &tby, &tbw, &tbh);
 
-    // top-left default
-    int16_t x = zone_x;
-    int16_t y = zone_y + tbh;
-
     // do X first
     if ((alignment & ALIGN_X_CENTER) != 0)
     {
-        x = zone_cx - tbw / 2;
+        x = zone_x + (zone_w - (tbw-tbx)) / 2;
     }
     else if ((alignment & ALIGN_X_RIGHT) != 0)
     {
@@ -88,13 +86,13 @@ void GetAlignedStringCoordinatesInZone(String str, int zone, byte alignment = AL
     }
     else
     {
-        // nothing to do - use default ALIGN_X_LEFT
+        x = zone_x;
     }
 
     // now y
     if ((alignment & ALIGN_Y_CENTER) != 0)
     {
-        y = zone_cy + tbh / 2;
+        y = zone_y + (zone_h + tbh) / 2;
     }
     else if ((alignment & ALIGN_Y_BOTTOM) != 0)
     {
@@ -102,16 +100,18 @@ void GetAlignedStringCoordinatesInZone(String str, int zone, byte alignment = AL
     }
     else
     {
-        // nothing do - use default ALIGN_Y_TOP
+        y = zone_y;
     }
 
-    if (sx != nullptr)
+    if (sx != nullptr && sy != nullptr)
+    {
         *sx = x;
-
-    if (sy != nullptr)
         *sy = y;
+    }
 
-    Serial.printf("geometry: tbx=%i tby=%i tbw=%i tbh=%i @ loc_x=%i loc_x=%i align=%02x %s\n", tbx, tby, tbw, tbh, x, y, alignment, c_str);
+#ifdef APPDEBUG
+    Serial.printf("tbx=%3i, tby=%3i, tbw=%3i, tbh=%3i,      x=%3i, sx=%3i, y=%3i, sy=%3i, val='%s'\n", tbx, tby, tbw, tbh, x, *sx, y, *sy, c_str);
+#endif
 }
 
 void fillZone(int zone, uint16_t color)
@@ -150,13 +150,13 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         display.setTextColor(GxEPD_BLACK);
 
         // zone debugging
-        for (int xz = 0; xz < numzones; xz++)
-            display.drawRect(zones[xz].x, zones[xz].y, zones[xz].w, zones[xz].h, GxEPD_BLACK);
+        // for (int xz = 0; xz < numzones; xz++)
+        //     display.drawRect(zones[xz].x, zones[xz].y, zones[xz].w, zones[xz].h, GxEPD_BLACK);
 
         // ###############
         // ## current temp
         // ###############
-        String ggg = String((int)(round(temp_now)));
+        String ggg = String((int)(round(temp_now == -99 ? data->current.temp : temp_now)));
         int16_t sx = 0, sy = 0;
 
         // need to set the font before getting the text bounds
@@ -183,15 +183,13 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         // The day's high temperature
         display.setFont(&Roboto_Condensed_72);
         ggg = String((int)(rint(maxtemp)));
-        //        GetAlignedStringCoordinates(ggg, 1, 0, ALIGN_X_CENTER | ALIGN_Y_CENTER);
         GetAlignedStringCoordinatesInZone(ggg, HIGH_TEMP_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(ggg);
 
         // weather icon
         display.setFont(&Meteocons_Regular_72);
-        //        GetAlignedStringCoordinates(data->daily[0].weatherIconMeteoCon, 2, 0, ALIGN_X_CENTER | ALIGN_Y_CENTER);
-        GetAlignedStringCoordinatesInZone(ggg, ICON_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
+        GetAlignedStringCoordinatesInZone(data->daily[0].weatherIconMeteoCon, ICON_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(data->daily[0].weatherIconMeteoCon);
 
@@ -202,8 +200,7 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         // 'now'
         display.setFont(&DejaVu_Sans_Condensed_30);
         snprintf(tempstring, 31, "now");
-        //        GetAlignedStringCoordinates(tempstring, 0, 1, ALIGN_X_CENTER | ALIGN_Y_CENTER);
-        GetAlignedStringCoordinatesInZone(ggg, CURRENT_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
+        GetAlignedStringCoordinatesInZone(tempstring, CURRENT_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(tempstring);
 
@@ -211,16 +208,14 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         display.setFont(&DejaVu_Sans_Condensed_30);
         time_t cdt = dt; // + data->timezone_offset;
         strftime(tempstring, 31, "%H:%M", localtime(&cdt));
-        //        GetAlignedStringCoordinates(tempstring, 1, 1, ALIGN_X_CENTER | ALIGN_Y_CENTER);
-        GetAlignedStringCoordinatesInZone(ggg, HIGH_TEMP_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
+        GetAlignedStringCoordinatesInZone(tempstring, HIGH_TEMP_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(tempstring);
 
         // icon decryption
         display.setFont(&DejaVu_Sans_Condensed_16);
         snprintf(tempstring, 31, "%s", data->daily[0].weatherMain.c_str());
-        //        GetAlignedStringCoordinates(tempstring, 2, 1, ALIGN_X_CENTER | ALIGN_Y_CENTER);
-        GetAlignedStringCoordinatesInZone(ggg, ICON_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
+        GetAlignedStringCoordinatesInZone(tempstring, ICON_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(tempstring);
 
@@ -232,15 +227,13 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         display.setFont(&DejaVu_Sans_Mono_10);
         cdt = data->current.dt; // + data->timezone_offset;
         strftime(tempstring, 31, "%D %H:%M", localtime(&cdt));
-        //        GetAlignedStringCoordinates(tempstring, 0, 2, ALIGN_X_LEFT | ALIGN_Y_BOTTOM);
-        GetAlignedStringCoordinatesInZone(ggg, SAMPLE_TIME_ZONE, ALIGN_X_CENTER | ALIGN_Y_BOTTOM, &sx, &sy);
+        GetAlignedStringCoordinatesInZone(tempstring, SAMPLE_TIME_ZONE, ALIGN_X_CENTER | ALIGN_Y_BOTTOM, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(tempstring);
 
         display.setFont(&DejaVu_Sans_Mono_10);
         snprintf(tempstring, 31, "%1.2fV", battery_level);
-        //        GetAlignedStringCoordinates(tempstring, 2, 2, ALIGN_X_RIGHT | ALIGN_Y_BOTTOM);
-        GetAlignedStringCoordinatesInZone(ggg, BATTERY_LEVEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_BOTTOM, &sx, &sy);
+        GetAlignedStringCoordinatesInZone(tempstring, BATTERY_LEVEL_ZONE, ALIGN_X_RIGHT | ALIGN_Y_BOTTOM, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(tempstring);
 
@@ -251,8 +244,7 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
             String msg = "Charge Battery";
             // display.setTextColor(GxEPD_RED);
             display.setTextColor(GxEPD_BLACK);
-            //            GetAlignedStringCoordinates(msg, 1, 2, ALIGN_X_CENTER | ALIGN_Y_BOTTOM);
-            GetAlignedStringCoordinatesInZone(ggg, WARNING_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
+            GetAlignedStringCoordinatesInZone(msg, WARNING_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
             display.setCursor(sx, sy);
             display.print(msg);
         }

@@ -28,12 +28,11 @@ OpenWeatherMapOneCallData openWeatherMapOneCallData;
 
 float get_ha_temp()
 {
-    float rval = 999;
+    float rval = -99;
     HTTPClient http_client;
     WiFiClient wifi_client;
 
-    const char *url = HOME_ASSISTANT_URL;
-    Serial.printf("Getting HA temp from %s\n", url);
+    Serial.printf("Getting HA temp from %s\n", HOME_ASSISTANT_URL);
 
     if (wifi_client.connected() == false)
     {
@@ -41,7 +40,7 @@ float get_ha_temp()
         delay(100);
     }
 
-    http_client.begin(wifi_client, url);
+    http_client.begin(wifi_client, HOME_ASSISTANT_URL);
     http_client.addHeader("Authorization", HOME_ASSISTANT_AUTH);
     http_client.setTimeout(5000);
 
@@ -55,7 +54,7 @@ float get_ha_temp()
 
     if (connecitonRetries == 0)
     {
-        APPDEBUG_PRINTLN("Connection retries exhausted.  Returning 999.");
+        APPDEBUG_PRINTLN("Connection retries exhausted.  Returning -99.");
         return rval;
     }
 
@@ -191,7 +190,7 @@ void loop()
         {
             oneCallClient->setMetric(IS_METRIC);
             oneCallClient->setLanguage(OPEN_WEATHER_MAP_LANGUAGE);
-            oneCallClient->update(&openWeatherMapOneCallData, OPEN_WEATHER_MAP_APP_ID, OPEN_WEATHER_MAP_LOCATION_LAT, OPEN_WEATHER_MAP_LOCATION_LON);
+            oneCallClient->update(&openWeatherMapOneCallData, OPEN_WEATHER_MAP_APP_ID, OPEN_WEATHER_MAP_LOCATTION_LAT, OPEN_WEATHER_MAP_LOCATTION_LON);
         }
 
         // battery level
