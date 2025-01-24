@@ -15,8 +15,7 @@ void updateCurrentTemperature(float temperature);
 // Location constants
 // These depend on the fonts used and rotation.  These default values may be reset in setup()
 
-const uint16_t numxzones = 3;
-const uint16_t numyzones = 3;
+const uint16_t numzones = 9;
 
 const byte ALIGN_X_CENTER = 0b00000001;
 const byte ALIGN_Y_CENTER = 0b00000010;

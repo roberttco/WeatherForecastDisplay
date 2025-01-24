@@ -28,35 +28,24 @@ void initDisplay()
 
     APPDEBUG_PRINTLN("Set partial window");
     display.setPartialWindow(0, 0, display.width(), display.height());
-
-    APPDEBUG_PRINTLN("Setup zones");
-    setupZones(display.width(), display.height());
 }
 
 struct Zone
 {
-    int16_t w, h, x, y, cx, cy;
+    int16_t x, y, w, h, cx, cy;
+} zones[numzones] = {
+    {0, 0, 98, 70, 49, 35},
+    {98, 0, 98, 70, 147, 35},
+    {196, 0, 98, 70, 245, 35},
+
+    {0, 70, 98, 35, 49, 87},
+    {98, 70, 98, 35, 147, 87},
+    {196, 70, 98, 35, 245, 87},
+
+    {0, 105, 98, 22, 49, 116},
+    {98, 105, 98, 22, 147, 116},
+    {196, 105, 98, 22, 245, 116},
 };
-
-struct Zonemap
-{
-    int x;
-    int y;
-
-} zonemap[numxzones * numyzones] = {
-    {0, 0}, {0, 1}, {0, 2}, {1, 0}, {1, 1}, {1, 2}, {2, 0}, {2, 1}, {2, 2}};
-
-/*
-zone: x=0 y=0 w.h=98x70 @ cx=49 cy=35
-zone: x=0 y=70 w.h=98x35 @ cx=49 cy=87
-zone: x=0 y=105 w.h=98x22 @ cx=49 cy=116
-zone: x=98 y=0 w.h=98x70 @ cx=147 cy=35
-zone: x=98 y=70 w.h=98x35 @ cx=147 cy=87
-zone: x=98 y=105 w.h=98x22 @ cx=147 cy=116
-zone: x=196 y=0 w.h=98x70 @ cx=245 cy=35
-zone: x=196 y=70 w.h=98x35 @ cx=245 cy=87
-zone: x=196 y=105 w.h=98x22 @ cx=245 cy=116
-*/
 
 #define CURRENT_TEMP_ZONE 0
 #define HIGH_TEMP_ZONE 1
@@ -68,54 +57,14 @@ zone: x=196 y=105 w.h=98x22 @ cx=245 cy=116
 #define WARNING_ZONE 7
 #define BATTERY_LEVEL_ZONE 8
 
-Zone zones[numxzones][numyzones];
-
-Zone calcZone(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
-{
-    /*
-    /------------------------\
-    |+ x,y                   |
-    |                        |
-    |           + cx,cy      |
-    |                        |
-    |                        |
-    \------------------------/
-    */
-    Zone rval;
-
-    rval.x = x;
-    rval.y = y;
-    rval.w = w;
-    rval.h = h;
-    rval.cx = x + (w / 2);
-    rval.cy = y + (h / 2);
-
-    Serial.printf("zone: x=%i y=%i w.h=%ix%i @ cx=%i cy=%i\n", rval.x, rval.y, rval.w, rval.h, rval.cx, rval.cy);
-
-    return rval;
-}
-
-void setupZones(uint16_t display_width, uint16_t display_height)
-{
-    for (uint16_t xz = 0; xz < numxzones; xz++)
-    {
-        zones[xz][0] = calcZone(xz * 98, 0, 98, 70);
-        zones[xz][1] = calcZone(xz * 98, 70, 98, 35);
-        zones[xz][2] = calcZone(xz * 98, 105, 98, 22);
-    }
-}
-
 void GetAlignedStringCoordinatesInZone(String str, int zone, byte alignment = ALIGN_Y_TOP | ALIGN_X_LEFT, int16_t *sx = nullptr, int16_t *sy = nullptr)
 {
-    int zmx = zonemap[zone].x;
-    int zmy = zonemap[zone].y;
-
-    int16_t zone_x = zones[zmx][zmy].x;
-    int16_t zone_y = zones[zmx][zmy].y;
-    int16_t zone_w = zones[zmx][zmy].w;
-    int16_t zone_h = zones[zmx][zmy].h;
-    int16_t zone_cx = zones[zmx][zmy].cx;
-    int16_t zone_cy = zones[zmx][zmy].cy;
+    int16_t zone_x = zones[zone].x;
+    int16_t zone_y = zones[zone].y;
+    int16_t zone_w = zones[zone].w;
+    int16_t zone_h = zones[zone].h;
+    int16_t zone_cx = zones[zone].cx;
+    int16_t zone_cy = zones[zone].cy;
 
     int16_t tbx, tby;
     uint16_t tbw, tbh;
@@ -167,10 +116,10 @@ void GetAlignedStringCoordinatesInZone(String str, int zone, byte alignment = AL
 
 void fillZone(int zone, uint16_t color)
 {
-    display.fillRect(zones[zonemap[zone].x][zonemap[zone].y].x,
-                     zones[zonemap[zone].x][zonemap[zone].y].y,
-                     zones[zonemap[zone].x][zonemap[zone].y].w,
-                     zones[zonemap[zone].x][zonemap[zone].y].h,
+    display.fillRect(zones[zone].x,
+                     zones[zone].y,
+                     zones[zone].w,
+                     zones[zone].h,
                      color);
 }
 
@@ -186,7 +135,7 @@ void updateCurrentTemperature(float temperature)
 
     do
     {
-        display.setCursor(sx,sy);
+        display.setCursor(sx, sy);
         display.print(ggg);
     } while (display.nextPage());
 }
@@ -201,9 +150,8 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         display.setTextColor(GxEPD_BLACK);
 
         // zone debugging
-        for (int xz = 0; xz < numxzones; xz++)
-            for (int yz = 0; yz < numyzones; yz++)
-                display.drawRect(zones[xz][yz].x, zones[xz][yz].y, zones[xz][yz].w, zones[xz][yz].h, GxEPD_BLACK);
+        for (int xz = 0; xz < numzones; xz++)
+            display.drawRect(zones[xz].x, zones[xz].y, zones[xz].w, zones[xz].h, GxEPD_BLACK);
 
         // ###############
         // ## current temp
@@ -214,7 +162,7 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         // need to set the font before getting the text bounds
         display.setFont(&Roboto_Condensed_72);
         GetAlignedStringCoordinatesInZone(ggg, CURRENT_TEMP_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
-        display.setCursor(sx,sy);
+        display.setCursor(sx, sy);
         display.print(ggg);
 
         // ###############
@@ -235,16 +183,16 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         // The day's high temperature
         display.setFont(&Roboto_Condensed_72);
         ggg = String((int)(rint(maxtemp)));
-//        GetAlignedStringCoordinates(ggg, 1, 0, ALIGN_X_CENTER | ALIGN_Y_CENTER);
+        //        GetAlignedStringCoordinates(ggg, 1, 0, ALIGN_X_CENTER | ALIGN_Y_CENTER);
         GetAlignedStringCoordinatesInZone(ggg, HIGH_TEMP_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
-        display.setCursor(sx,sy);
+        display.setCursor(sx, sy);
         display.print(ggg);
 
         // weather icon
         display.setFont(&Meteocons_Regular_72);
-//        GetAlignedStringCoordinates(data->daily[0].weatherIconMeteoCon, 2, 0, ALIGN_X_CENTER | ALIGN_Y_CENTER);
+        //        GetAlignedStringCoordinates(data->daily[0].weatherIconMeteoCon, 2, 0, ALIGN_X_CENTER | ALIGN_Y_CENTER);
         GetAlignedStringCoordinatesInZone(ggg, ICON_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
-        display.setCursor(sx,sy);
+        display.setCursor(sx, sy);
         display.print(data->daily[0].weatherIconMeteoCon);
 
         //
@@ -254,26 +202,26 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         // 'now'
         display.setFont(&DejaVu_Sans_Condensed_30);
         snprintf(tempstring, 31, "now");
-//        GetAlignedStringCoordinates(tempstring, 0, 1, ALIGN_X_CENTER | ALIGN_Y_CENTER);
+        //        GetAlignedStringCoordinates(tempstring, 0, 1, ALIGN_X_CENTER | ALIGN_Y_CENTER);
         GetAlignedStringCoordinatesInZone(ggg, CURRENT_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
-        display.setCursor(sx,sy);
+        display.setCursor(sx, sy);
         display.print(tempstring);
 
         // The time of the maximum temperature
         display.setFont(&DejaVu_Sans_Condensed_30);
         time_t cdt = dt; // + data->timezone_offset;
         strftime(tempstring, 31, "%H:%M", localtime(&cdt));
-//        GetAlignedStringCoordinates(tempstring, 1, 1, ALIGN_X_CENTER | ALIGN_Y_CENTER);
+        //        GetAlignedStringCoordinates(tempstring, 1, 1, ALIGN_X_CENTER | ALIGN_Y_CENTER);
         GetAlignedStringCoordinatesInZone(ggg, HIGH_TEMP_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
-        display.setCursor(sx,sy);
+        display.setCursor(sx, sy);
         display.print(tempstring);
 
         // icon decryption
         display.setFont(&DejaVu_Sans_Condensed_16);
         snprintf(tempstring, 31, "%s", data->daily[0].weatherMain.c_str());
-//        GetAlignedStringCoordinates(tempstring, 2, 1, ALIGN_X_CENTER | ALIGN_Y_CENTER);
+        //        GetAlignedStringCoordinates(tempstring, 2, 1, ALIGN_X_CENTER | ALIGN_Y_CENTER);
         GetAlignedStringCoordinatesInZone(ggg, ICON_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
-        display.setCursor(sx,sy);
+        display.setCursor(sx, sy);
         display.print(tempstring);
 
         //
@@ -284,16 +232,16 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         display.setFont(&DejaVu_Sans_Mono_10);
         cdt = data->current.dt; // + data->timezone_offset;
         strftime(tempstring, 31, "%D %H:%M", localtime(&cdt));
-//        GetAlignedStringCoordinates(tempstring, 0, 2, ALIGN_X_LEFT | ALIGN_Y_BOTTOM);
+        //        GetAlignedStringCoordinates(tempstring, 0, 2, ALIGN_X_LEFT | ALIGN_Y_BOTTOM);
         GetAlignedStringCoordinatesInZone(ggg, SAMPLE_TIME_ZONE, ALIGN_X_CENTER | ALIGN_Y_BOTTOM, &sx, &sy);
-        display.setCursor(sx,sy);
+        display.setCursor(sx, sy);
         display.print(tempstring);
 
         display.setFont(&DejaVu_Sans_Mono_10);
         snprintf(tempstring, 31, "%1.2fV", battery_level);
-//        GetAlignedStringCoordinates(tempstring, 2, 2, ALIGN_X_RIGHT | ALIGN_Y_BOTTOM);
+        //        GetAlignedStringCoordinates(tempstring, 2, 2, ALIGN_X_RIGHT | ALIGN_Y_BOTTOM);
         GetAlignedStringCoordinatesInZone(ggg, BATTERY_LEVEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_BOTTOM, &sx, &sy);
-        display.setCursor(sx,sy);
+        display.setCursor(sx, sy);
         display.print(tempstring);
 
         // warn about charging
@@ -303,9 +251,9 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
             String msg = "Charge Battery";
             // display.setTextColor(GxEPD_RED);
             display.setTextColor(GxEPD_BLACK);
-//            GetAlignedStringCoordinates(msg, 1, 2, ALIGN_X_CENTER | ALIGN_Y_BOTTOM);
+            //            GetAlignedStringCoordinates(msg, 1, 2, ALIGN_X_CENTER | ALIGN_Y_BOTTOM);
             GetAlignedStringCoordinatesInZone(ggg, WARNING_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
-            display.setCursor(sx,sy);
+            display.setCursor(sx, sy);
             display.print(msg);
         }
 
