@@ -10,7 +10,7 @@
 
 #include "OpenWeatherMapOneCall.h"
 
-#include "apikey.h"
+#include "secret.h"
 
 // #########################
 // # RTC memory stuff
@@ -32,7 +32,7 @@ float get_ha_temp()
     HTTPClient http_client;
     WiFiClient wifi_client;
 
-    const char *url = "http://ha.home:8123/api/states/sensor.environment_sensor_0f95eb_temperature";
+    const char *url = HOME_ASSISTANT_URL;
     Serial.printf("Getting HA temp from %s\n", url);
 
     if (wifi_client.connected() == false)
@@ -42,7 +42,7 @@ float get_ha_temp()
     }
 
     http_client.begin(wifi_client, url);
-    http_client.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkOWEwZTU2YzBjNTQ0YzVmYWFkNGU5ZjVmNTk1YThhZSIsImlhdCI6MTcyNjI4MTY3OCwiZXhwIjoyMDQxNjQxNjc4fQ.SRVbUdClb_vTn_nIoiR9YQzwwamsiqKbWKtdNzQrkRI");
+    http_client.addHeader("Authorization", HOME_ASSISTANT_AUTH);
     http_client.setTimeout(5000);
 
     int connecitonRetries = 3;
