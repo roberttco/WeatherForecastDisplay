@@ -67,8 +67,6 @@ boolean ConnectToWiFi(RtcData *rtcData)
     boolean rval = false;
     int retries = 0;
 
-    pinMode(0, INPUT);
-
     // the value will be zero if the data isn't valid
     boolean apvalid = ((rtcData != NULL) && ((rtcData->valid & APVALID) == APVALID));
 
@@ -98,19 +96,7 @@ boolean ConnectToWiFi(RtcData *rtcData)
     while (wifiStatus != WL_CONNECTED)
     {
         retries++;
-        if (digitalRead(0) == LOW && retries > 10)
-        {
-            APPDEBUG_PRINTLN("WiFi reset button pressed, resetting WiFi to use hard coded SSID and password.");
-            WiFi.disconnect();
-            delay(10);
-            WiFi.forceSleepBegin();
-            delay(10);
-            WiFi.forceSleepWake();
-            delay(10);
-            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-            retries = 0;    // reset retries here so as long as the reset pin is held down, we will keep trying to connect
-        }
-        else if (retries == 300)
+        if (retries == 300)
         {
             APPDEBUG_PRINTLN("No connection after 300 steps, power cycling the WiFi radio. I have seen this work when the connection is unstable");
             WiFi.disconnect();

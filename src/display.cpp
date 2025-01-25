@@ -18,31 +18,23 @@
 GxEPD2_BW<GxEPD2_290_BS, GxEPD2_290_BS::HEIGHT> display(GxEPD2_290_BS(/*CS=5*/ 15, /*DC=*/4, /*RES=*/5, /*BUSY=*/10)); // DEPG0290BS 128x296, SSD1680
 // GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(/*CS=5*/ 15, /*DC=*/ 4, /*RES=*/ 5, /*BUSY=*/ 16)); // GDEM029C90 128x296, SSD1680
 
-void initDisplay()
-{
-    APPDEBUG_PRINTLN("Init display");
-    display.init(9600, true, 2, false);
-
-    APPDEBUG_PRINTLN("Set rotation");
-    display.setRotation(1);
-
-    APPDEBUG_PRINTLN("Set partial window");
-    display.setPartialWindow(0, 0, display.width(), display.height());
-}
-
+// zone heights should be a multiple of 8 with rotation = 1 to accommodate the display controller
+// behavior.
 struct Zone
 {
     int16_t x, y, w, h;
 } zones[numzones] = {
-    {0, 0, 98, 70},     // current temp
-    {98, 0, 98, 70},    // high temp
-    {196, 0, 98, 70},   // icon
-    {0, 70, 98, 35},    // current label
-    {98, 70, 98, 35},   // high temp label
-    {196, 70, 98, 35},  // icon label
-    {0, 105, 98, 22},   // sample time
-    {98, 105, 98, 22},  // warning
-    {196, 105, 98, 22}, // battery level
+    {0, 0, 98, 72},     // current temp
+    {98, 0, 98, 72},    // high temp
+    {196, 0, 98, 72},   // icon
+
+    {0, 64, 98, 40},    // current label
+    {98, 64, 98, 40},   // high temp label
+    {196, 64, 98, 40},  // icon label
+
+    {0, 104, 98, 20},   // sample time
+    {98, 104, 98, 20},  // warning
+    {196, 104, 98, 20}, // battery level
 };
 
 #define CURRENT_TEMP_ZONE 0
@@ -54,6 +46,31 @@ struct Zone
 #define SAMPLE_TIME_ZONE 6
 #define WARNING_ZONE 7
 #define BATTERY_LEVEL_ZONE 8
+
+void InitDisplay(bool warmBoot)
+{
+    if (warmBoot)
+    {
+        APPDEBUG_PRINTLN("Init display after warm boot");
+        display.init(9600, false, 2, false);
+    }
+    else
+    {
+        APPDEBUG_PRINTLN("Init display");
+        display.init(9600, true, 2, false);
+    }
+
+    APPDEBUG_PRINTLN("Set rotation");
+    display.setRotation(1);
+
+    APPDEBUG_PRINTLN("Set partial window");
+    display.setPartialWindow(0, 0, display.width(), display.height());
+}
+
+void PutDisplayToSleep()
+{
+    display.hibernate();
+}
 
 void GetAlignedStringCoordinatesInZone(String str, int zone, byte alignment = ALIGN_Y_TOP | ALIGN_X_LEFT, int16_t *sx = nullptr, int16_t *sy = nullptr)
 {
@@ -114,7 +131,7 @@ void GetAlignedStringCoordinatesInZone(String str, int zone, byte alignment = AL
 #endif
 }
 
-void fillZone(int zone, uint16_t color)
+void FillZone(int zone, uint16_t color)
 {
     display.fillRect(zones[zone].x,
                      zones[zone].y,
@@ -123,15 +140,16 @@ void fillZone(int zone, uint16_t color)
                      color);
 }
 
-void updateCurrentTemperature(float temperature)
+void UpdateCurrentTemperature(float temperature)
 {
+    display.setPartialWindow(zones[CURRENT_TEMP_ZONE].x, zones[CURRENT_TEMP_ZONE].y, zones[CURRENT_TEMP_ZONE].w, zones[CURRENT_TEMP_ZONE].h);
     String ggg = String((int)(round(temperature)));
     int16_t sx = 0, sy = 0;
     display.setTextColor(GxEPD_BLACK);
     display.setFont(&Roboto_Condensed_72);
     GetAlignedStringCoordinatesInZone(ggg, CURRENT_TEMP_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
 
-    fillZone(CURRENT_TEMP_ZONE, GxEPD_WHITE);
+    FillZone(CURRENT_TEMP_ZONE, GxEPD_WHITE);
 
     do
     {
@@ -140,12 +158,14 @@ void updateCurrentTemperature(float temperature)
     } while (display.nextPage());
 }
 
-void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double battery_level)
+void DisplayInformation(OpenWeatherMapOneCallData *data, float temp_now, double battery_level)
 {
     char tempstring[32];
 
     do
     {
+        APPDEBUG_PRINTLN("Displaying information");
+
         display.fillScreen(GxEPD_WHITE);
         display.setTextColor(GxEPD_BLACK);
 
@@ -187,16 +207,18 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         display.setCursor(sx, sy);
         display.print(ggg);
 
+        // ###############
+        // ## icon
+        // ###############
         // weather icon
         display.setFont(&Meteocons_Regular_72);
         GetAlignedStringCoordinatesInZone(data->daily[0].weatherIconMeteoCon, ICON_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(data->daily[0].weatherIconMeteoCon);
 
-        //
-        // Y-ZONE
-        //
-
+        // ###############
+        // ## the word 'now'
+        // ###############
         // 'now'
         display.setFont(&DejaVu_Sans_Condensed_30);
         snprintf(tempstring, 31, "now");
@@ -204,6 +226,9 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         display.setCursor(sx, sy);
         display.print(tempstring);
 
+        // ###############
+        // ## max temp sample time
+        // ###############
         // The time of the maximum temperature
         display.setFont(&DejaVu_Sans_Condensed_30);
         time_t cdt = dt; // + data->timezone_offset;
@@ -212,28 +237,23 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
         display.setCursor(sx, sy);
         display.print(tempstring);
 
-        // icon decryption
+        // ###############
+        // ## icon description
+        // ###############
         display.setFont(&DejaVu_Sans_Condensed_16);
         snprintf(tempstring, 31, "%s", data->daily[0].weatherMain.c_str());
         GetAlignedStringCoordinatesInZone(tempstring, ICON_LABEL_ZONE, ALIGN_X_CENTER | ALIGN_Y_CENTER, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(tempstring);
 
-        //
-        // Y-ZONE 2
-        //
-
+        // ###############
+        // ## status line stuff
+        // ###############
         // current reading time
         display.setFont(&DejaVu_Sans_Mono_10);
         cdt = data->current.dt; // + data->timezone_offset;
         strftime(tempstring, 31, "%D %H:%M", localtime(&cdt));
         GetAlignedStringCoordinatesInZone(tempstring, SAMPLE_TIME_ZONE, ALIGN_X_CENTER | ALIGN_Y_BOTTOM, &sx, &sy);
-        display.setCursor(sx, sy);
-        display.print(tempstring);
-
-        display.setFont(&DejaVu_Sans_Mono_10);
-        snprintf(tempstring, 31, "%1.2fV", battery_level);
-        GetAlignedStringCoordinatesInZone(tempstring, BATTERY_LEVEL_ZONE, ALIGN_X_RIGHT | ALIGN_Y_BOTTOM, &sx, &sy);
         display.setCursor(sx, sy);
         display.print(tempstring);
 
@@ -249,5 +269,10 @@ void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double 
             display.print(msg);
         }
 
+                display.setFont(&DejaVu_Sans_Mono_10);
+        snprintf(tempstring, 31, "%1.2fV", battery_level);
+        GetAlignedStringCoordinatesInZone(tempstring, BATTERY_LEVEL_ZONE, ALIGN_X_RIGHT | ALIGN_Y_BOTTOM, &sx, &sy);
+        display.setCursor(sx, sy);
+        display.print(tempstring);
     } while (display.nextPage());
 }

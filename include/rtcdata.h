@@ -11,6 +11,7 @@ typedef struct _RTCDATA {
   uint8_t channel;        // 1 byte,   2 in total
   uint8_t ap_mac[6];      // 6 bytes,  8 in total
   uint16_t adc;           // 2 bytes
+  bool warmBoot;
 } RtcData;
 
 #define DSVALID 0x01

@@ -5,12 +5,13 @@
 #include <GxEPD2_3C.h>
 #include "OpenWeatherMapOneCall.h"
 
-void initDisplay();
+void InitDisplay(bool warmBoot);
+void PutDisplayToSleep();
 void displayCurrentWeatherData(OpenWeatherMapOneCallCurrentData *data);
 void setupZones(uint16_t display_width, uint16_t display_height);
-void displayInformation(OpenWeatherMapOneCallData *data, float temp_now, double battery_level);
+void DisplayInformation(OpenWeatherMapOneCallData *data, float temp_now, double battery_level);
 
-void updateCurrentTemperature(float temperature);
+void UpdateCurrentTemperature(float temperature);
 
 // Location constants
 // These depend on the fonts used and rotation.  These default values may be reset in setup()

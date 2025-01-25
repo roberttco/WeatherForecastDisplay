@@ -42,9 +42,9 @@ float get_ha_temp()
 
     http_client.begin(wifi_client, HOME_ASSISTANT_URL);
     http_client.addHeader("Authorization", HOME_ASSISTANT_AUTH);
-    http_client.setTimeout(5000);
+    http_client.setTimeout(10000);
 
-    int connecitonRetries = 3;
+    int connecitonRetries = 10;
     while (connecitonRetries > 0 && http_client.connected() == false)
     {
         APPDEBUG_PRINTLN("Waiting for connection to HA");
@@ -85,6 +85,8 @@ float get_ha_temp()
 
 void setup()
 {
+    pinMode(0, INPUT);
+
     Serial.begin(9600);
 
     WiFi.mode(WIFI_OFF);
@@ -104,6 +106,7 @@ void setup()
     // Get the data
     rtcData = rtcMemory.getData();
 
+
 #ifdef APPDEBUG
     Serial.printf("Valid: %X\nChannel: %d\nap_mac: %s\n",
                   rtcData->valid,
@@ -115,10 +118,11 @@ void setup()
     oneCallClient->setMetric(IS_METRIC);
     oneCallClient->setLanguage(OPEN_WEATHER_MAP_LANGUAGE);
 
-    initDisplay();
+    InitDisplay(rtcData->warmBoot);
 }
 
 int connectRetries = 3;
+unsigned long sleepDuration = DEEP_SLEEP_TIME_SECONDS * 1000000;
 
 void loop()
 {
@@ -204,8 +208,7 @@ void loop()
     }
 
     //  save curent RTC memory data
-    rtcMemory.save();
-    delay(10);
+
 
     APPDEBUG_PRINT("OpenWeatherMap temperature: ");
     APPDEBUG_PRINTLN(openWeatherMapOneCallData.current.temp);
@@ -218,9 +221,36 @@ void loop()
     double K = 3.273 / 615.0;    // calib
     battery_level = a_wo * K;
 
-    displayInformation(&openWeatherMapOneCallData, temp_now, battery_level);
+    if (rtcData->warmBoot == false)
+    {
+        APPDEBUG_PRINTLN("Screen not configured yet.  Configuring now.");
+        DisplayInformation(&openWeatherMapOneCallData, temp_now, battery_level);
+        rtcData->warmBoot = true;
+    }
+    else
+    {
+        APPDEBUG_PRINTLN("Screen already configured.  Updating now.");
+        UpdateCurrentTemperature(temp_now);
+    }
 
+    if (digitalRead(0) == LOW)
+    {
+        APPDEBUG_PRINTLN("D0 is low.  Clearing RTC data and resetting.");
+        memset(rtcData, 0, sizeof(RtcData));
+        sleepDuration = 1E6 * 5;    // sleep for 5 seconds after resetting
+    }
+
+    PutDisplayToSleep();
+    rtcMemory.save();
+    delay(10);
+
+#ifdef DEEP_SLEEP_TIME_SECONDS
     APPDEBUG_PRINTLN("Going to sleep now ...");
-    ESP.deepSleep(DEEP_SLEEP_TIME_SECONDS * 1000000);
+    ESP.deepSleep(sleepDuration,RFMode::RF_DISABLED);
+#else
+    APPDEBUG_PRINTLN("Waiting now ...");
+    delay(10000);
+    ESP.reset();
+#endif
 #endif
 }
